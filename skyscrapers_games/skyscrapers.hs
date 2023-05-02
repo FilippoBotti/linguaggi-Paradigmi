@@ -26,9 +26,9 @@ parseInt = read :: String -> Int
 
 -- Main effettivo
 main = do
-    contents <- readFile "skyscrapers-3x3.txt"
+    contents <- readFile "skyscrapers-4x4.txt"
     putStr contents
-    if (checkHorizontalConstraints contents == 0) && (checkVerticalConstraints contents == 0)
+    if checkHorizontalConstraints contents && checkVerticalConstraints contents
         then return "Skyscraper corretto."
     else return "Skyscraper non corretto."
 
@@ -77,37 +77,64 @@ getOnlyPositiveConstraints elements tetti = filter ((>0) . fst) $ zip elements t
 checkConstraints :: [(Int,Int)] -> [Int]
 checkConstraints constraints = filter (/=0) (map (\(x,y) -> x-y) constraints)
 
+-- Funzione che verifica se una lista presenta tutti i valori diversi
+allDifferent' [] isUnique = isUnique
+allDifferent' (x:xs) isUnique
+    | x `elem` xs = allDifferent' xs False
+    | otherwise = allDifferent' xs isUnique
+
+allDifferent list = allDifferent' list True
+
+-- Funzione che verifica se in una lista sono presenti tutti i valori ammessi nel gioco dello skyscraper,
+-- ovvero valori che vanno da 1 a size_list e, in caso positivo, richiama la funzione per verificare
+-- che non vi siano numeri ripetuti (uniqueness and range of values)
+allValues' [] hasAllValues = hasAllValues
+allValues' list hasAllValues
+    | sum [1..(length list)] == sum list = allDifferent list
+    | otherwise =  allValues' [] False
+allValues list = allValues' list True
+
+-- Funzione che data una matrice verifica se ogni riga della matrice presenta valori non ripetuti
+-- e rispetta il range di valori ammissibili (1 - dimensione_riga). Applicata anche sulla matrice trasposta
+-- verifica le colonne
+checkUniquenessAndRange :: [[Int]] -> Bool
+checkUniquenessAndRange listeInteri = and $ map allValues listeInteri
+
 -- Funzione che verifica i vincoli laterali di una matrice. Restituisce 0 se ogni vincolo è rispettato
 -- mentre resituisce un numero diverso da zero se vi è almeno un vincolo non rispettato
-checkHorizontalConstraints :: String -> Int
+checkHorizontalConstraints :: String -> Bool
 checkHorizontalConstraints input =
     let listeInteri = parseFileToListOfInteger input
         firstElements = getOnlyLeftConstraints listeInteri
         lastElements = getOnlyRightConstraints listeInteri
         elemToCheck = getOnlyElementsToCheck listeInteri
+        isUniquenessAndRangeSatisfied = checkUniquenessAndRange elemToCheck
         tettiFromLeft = getTettiFromLeft elemToCheck
         tettiFromRight = getTettiFromRight elemToCheck
         leftConstraints = getOnlyPositiveConstraints firstElements tettiFromLeft
         rightConstraints = getOnlyPositiveConstraints lastElements tettiFromRight
         leftResult = checkConstraints leftConstraints
         rightResult = checkConstraints rightConstraints
-        in length leftResult + length rightResult
+        isSkyscraperSatisfied = (length leftResult + length rightResult) == 0
+        in isSkyscraperSatisfied && isUniquenessAndRangeSatisfied
 
 -- Funzione che verifica i vincoli verticali di una matrice. Restituisce 0 se ogni vincolo è rispettato
 -- mentre resituisce un numero diverso da zero se vi è almeno un vincolo non rispettato
-checkVerticalConstraints :: String -> Int
+checkVerticalConstraints :: String -> Bool
 checkVerticalConstraints input =
     let listeInteri = transpose (parseFileToListOfInteger input)
         firstElements = getOnlyLeftConstraints listeInteri
         lastElements = getOnlyRightConstraints listeInteri
         elemToCheck = getOnlyElementsToCheck listeInteri
+        isUniquenessAndRangeSatisfied = checkUniquenessAndRange elemToCheck
         tettiFromLeft = getTettiFromLeft elemToCheck
         tettiFromRight = getTettiFromRight elemToCheck
         leftConstraints = getOnlyPositiveConstraints firstElements tettiFromLeft
         rightConstraints = getOnlyPositiveConstraints lastElements tettiFromRight
         leftResult = checkConstraints leftConstraints
         rightResult = checkConstraints rightConstraints
-        in length leftResult + length rightResult
+        isSkyscraperSatisfied = (length leftResult + length rightResult) == 0
+        in isSkyscraperSatisfied && isUniquenessAndRangeSatisfied
 
 
 -- Funzione che applica l'algoritmo skyscraper
