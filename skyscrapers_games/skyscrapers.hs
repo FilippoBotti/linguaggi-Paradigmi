@@ -26,7 +26,7 @@ parseInt = read :: String -> Int
 
 -- Main effettivo
 main = do
-    contents <- readFile "skyscrapers-4x4.txt"
+    contents <- readFile "skyscrapers-3x3.txt"
     putStr contents
     if checkHorizontalConstraints contents && checkVerticalConstraints contents
         then return "Skyscraper corretto."
@@ -77,10 +77,13 @@ getOnlyPositiveConstraints elements tetti = filter ((>0) . fst) $ zip elements t
 checkConstraints :: [(Int,Int)] -> [Int]
 checkConstraints constraints = filter (/=0) (map (\(x,y) -> x-y) constraints)
 
--- Funzione che verifica se una lista presenta tutti i valori diversi
+-- Funzione che verifica se una lista presenta tutti i valori diversi.
+-- Inoltre viene verificato che i valori siano positivi, altrimenti 
+-- il ragionamento fatto per la verifica dei range di valori (funzione allValues) non sarebbe corretto
 allDifferent' [] isUnique = isUnique
 allDifferent' (x:xs) isUnique
-    | x `elem` xs = allDifferent' xs False
+    | x `elem` xs = allDifferent' [] False
+    | x < 0 = allDifferent' [] False
     | otherwise = allDifferent' xs isUnique
 
 allDifferent list = allDifferent' list True
