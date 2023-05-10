@@ -147,8 +147,4 @@ mossaUtente matrix (cols,rows) mosse_utente   = do
                 let result = cleanUp (cols,rows) matrix (read index)
                 mossaUtente result (cols,rows) (mosse_utente+1) 
 
-checkWin' [] isMatchWin = isMatchWin
-checkWin' (x:xs) isMatchWin 
-    | x = checkWin' xs isMatchWin
-    | otherwise = checkWin' [] False
-checkWin matrix = checkWin' matrix True
+checkWin matrix = not $ (True `elem` matrix)

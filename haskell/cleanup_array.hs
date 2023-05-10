@@ -54,8 +54,15 @@ cleanUp (cols,rows) matrix index =
         downNeig = x+1 + y*cols
         leftNeig = x + (y+1)*cols
         rightNeig = x + (y-1)*cols
-        result = matrix // [(i, not $ matrix ! i) |  i <- [0..rows*cols-1], i == upperNeig || i==leftNeig || i==rightNeig || i==downNeig]
+        result = matrix // [(i, not $ matrix ! i) |  i <- [0..rows*cols-1], isNeighbour i rows cols (y,x)]
         in result
+
+
+isNeighbour index rows cols (y,x) =
+    index >=0 && index < (cols * rows) && dx+dy ==1
+    where   (y1,x1) = divMod index cols
+            dy = abs (y-y1)
+            dx = abs (x-x1) 
 
 
 
@@ -76,7 +83,7 @@ main = do
             shuffleMatch matrix (cols,rows) 0 gen mosse_random (-1)
 
 
-checkWin matrix = not $ (False `elem` matrix)
+checkWin matrix = not $ (True `elem` matrix)
 
 -- Funzione che effettua un numero di mosse random scelto dall'utente
 -- le mosse non possono essere ripetute
