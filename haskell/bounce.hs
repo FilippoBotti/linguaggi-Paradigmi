@@ -3,7 +3,7 @@ import Distribution.Compat.Graph (neighbors)
 import Data.Word (Word32)
 import Data.Bits (xor, shiftL, shiftR)
 import Data.Time.Clock.POSIX (getPOSIXTime)
-import Data.List (sort)
+import Data.List (sort, tails)
 import Control.Monad (when)
 
 type Rng32 = Word32
@@ -66,43 +66,69 @@ data BasicActor = Ball { x :: Int
                        , y :: Int
                        , dx :: Int
                        , dy :: Int
+                       , w :: Int
+                       , h :: Int
                        }
                 | Ghost { x :: Int
                         , y :: Int
                         , rnd :: Rng32
+                        , w :: Int
+                        , h :: Int
+                        } 
+                |  Wall { wx :: Int
+                        , wy :: Int
+                        , w :: Int
+                        , h :: Int
                         } deriving (Show)
 
 moveX :: BasicActor -> BasicActor
-moveX (Ball x y dx dy)
-    | 0 <= x + dx && x + dx < maxX = Ball (x + dx) y dx dy
-    | otherwise                    = Ball (x - dx) y (-dx) dy
-moveX (Ghost x y rnd) = Ghost x' y rnd'
-    where (d, rnd') = randint (-1,1) rnd
+moveX (Ball x y dx dy w h)
+    | 0 <= x + dx && x + dx < maxX = Ball (x + dx) y dx dy w h
+    | otherwise                    = Ball (x - dx) y (-dx) dy w h
+moveX (Ghost x y rnd w h) = Ghost x' y rnd' w h
+    where (d, rnd') = randint (-1,1) rnd 
           x' = (x + 5 * d) `mod` maxX
+moveX (Wall wx wy w h) = Wall wx wy w h
 
 moveY :: BasicActor -> BasicActor
-moveY (Ball x y dx dy)
-    | 0 <= y + dy && y + dy < maxY = Ball x (y + dy) dx dy
-    | otherwise                    = Ball x (y - dy) dx (-dy)
-moveY (Ghost x y rnd) = Ghost x y' rnd'
-    where (d, rnd') = randint (-1,1) rnd
+moveY (Ball x y dx dy w h)
+    | 0 <= y + dy && y + dy < maxY = Ball x (y + dy) dx dy w h
+    | otherwise                    = Ball x (y - dy) dx (-dy) w h
+moveY (Ghost x y rnd w h) = Ghost x y' rnd' w h
+    where (d, rnd') = randint (-1,1) rnd 
           y' = (y + 5 * d) `mod` maxY
+moveY (Wall wx wy w h) = Wall wx wy w h
 
 instance Actor BasicActor where
     move = moveX . moveY 
 
 ----
+allPairs xs = [(x, y) | (x:ys) <- tails xs, y <- ys]
 
-data Wall = Wall { wx :: Int
-                 , wy :: Int
-                 } deriving (Show)
+collisionCheck :: BasicActor -> BasicActor -> Bool
+collisionCheck (Ball x1 y1 dx dy w1 h1) (Wall x2 y2 w2 h2) = y2 < y1 + h1 && y1 < y2 + h2 && x2 < x1 + w1 && x1 < x2 + w2
+            
+collision :: BasicActor -> BasicActor -> BasicActor
+collision (Ball x1 y1 dx dy w1 h1) (Wall x2 y2 w2 h2)
+    | collisionCheck (Ball x1 y1 dx dy w1 h1) (Wall x2 y2 w2 h2) = move $ Ball x1 y1 (updateHorizontalSpeed x1 dx x2) (updateVerticalSpeed y1 dy y2) w1 h1
+    | otherwise = Ball x1 y1 dx dy w1 h1
 
-instance Actor Wall where
-    move = id    -- move w = w
+-- Aggiordno dx,dy in base a dove collido
+updateHorizontalSpeed x1 dx other_x
+    | x1 > other_x = -dx
+    | otherwise =  dx
+
+updateVerticalSpeed y1 dy other_y
+    | y1 > other_y = -dy
+    | otherwise = dy
+
+
+-- instance Actor Wall where
+--     move = id    -- move w = w
         
 ----
 
 main = do
     rnd <- getRng32
-    operateArena (Arena [Ball 200 100 5 5, Ghost 100 100 rnd])
+    operateArena (Arena [Ball 200 100 5 5 10 10, Ghost 100 100 rnd 10 10, Wall 50 50 20 20])
     -- try to add a Wall to the actors
