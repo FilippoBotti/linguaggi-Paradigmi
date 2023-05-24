@@ -22,6 +22,7 @@ extern {
     fn js_draw_image(src: String, x: i32, y: i32, xc: i32, yc: i32, wc: i32, hc: i32);
     fn js_mouse_x() -> i32;
     fn js_mouse_y() -> i32;
+
 }
 
 pub fn init_canvas(size: Pt) {

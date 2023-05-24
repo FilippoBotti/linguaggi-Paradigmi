@@ -1,3 +1,4 @@
+use pt2d::pt;
 use wasm_bindgen::prelude::*;
 use std::cell::RefCell;
 
@@ -12,7 +13,7 @@ pub struct BounceGui {
 }
 impl BounceGui {
     pub fn new() -> BounceGui {
-        let game = bounce::BounceGame::new(pt2d::pt(480, 360), 3, 2);
+        let game = bounce::BounceGame::new(pt2d::pt(640,450), 5, 2);
         BounceGui{game}
     }
     pub fn setup(&self) {
@@ -21,9 +22,10 @@ impl BounceGui {
     }
     pub fn tick(&mut self) {
         g2d::clear_canvas();
+        g2d::draw_image_clip("frogger-bg.png".to_string(), pt(0,0) ,pt(0,15), pt(640,450));
         for b in self.game.actors() {
             if let Some(img) = b.sprite() {
-                g2d::draw_image_clip("sprites.png".to_string(), b.pos(), img, b.size());
+                g2d::draw_image_clip("frogger.png".to_string(), b.pos(), img, b.size());
             } else {
                 //g2d::fill_rect(b.pos(), b.size());
             }
@@ -31,7 +33,6 @@ impl BounceGui {
         let txt = format!("Lives: {} Time: {}",
             self.game.remaining_lives(), self.game.remaining_time());
         g2d::draw_text(txt, pt2d::pt(0, 0), 24);
-
         if self.game.game_over() {
             g2d::alert("Game over".to_string());
             g2d::close_canvas();

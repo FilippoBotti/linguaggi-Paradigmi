@@ -11,6 +11,7 @@ pub trait Actor {
     fn sprite(&self) -> Option<Pt>;
     fn alive(&self) -> bool;
     fn as_any(&self) -> &dyn Any;
+    fn speed(&self) -> i32;
 }
 
 pub struct ArenaStatus<'a> {
