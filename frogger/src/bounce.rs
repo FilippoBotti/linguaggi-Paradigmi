@@ -147,13 +147,19 @@ pub struct Frog {
     steps: i32,
     dragging: i32,
     moving_direction: i32,
+    frog_safe: i32,
 }
 impl Frog {
     pub fn new(pos: Pt) -> Frog {
         Frog{pos: pos, step: pt(0, 0), size: pt(30, 30),
-            speed: 4, lives: 3, vehicle_collide: 0, water_collide:0, safe_place_collide: 0, dragging: 0, count:0, steps: 8, moving_direction: 0, is_collision_enabled: true}
+            speed: 4, lives: 3, vehicle_collide: 0, water_collide:0, safe_place_collide: 0,
+             dragging: 0, count:0, steps: 8, moving_direction: 0, is_collision_enabled: true,
+            frog_safe: 0}
     }
     fn lives(&self) -> i32 { self.lives }
+    fn is_all_frog_safe(&self) -> bool {
+        return self.frog_safe == 1;
+    }
 }
 impl Actor for Frog {
     fn act(&mut self, arena: &mut ArenaStatus) {
@@ -172,11 +178,12 @@ impl Actor for Frog {
                     if !frog_winnger.is_reached {
                         self.safe_place_collide = 60;
                         self.pos = other.pos();
+                        self.frog_safe +=1;
                     }
                     else {
                         self.vehicle_collide = 60;
                         self.lives -= 1;
-                        //disattivo collisioni ma perde vite...
+                        //disattivo collisioni ma perde vite
                     }
                 }
 
@@ -356,11 +363,6 @@ impl BounceGame {
             if vehicle_index == n_vehicles-1 {
                 vehicle_size = pt(65,30);
             }
-            arena.spawn(Box::new(FrogWinner::new(pt(50,35))));
-            arena.spawn(Box::new(FrogWinner::new(pt(177,35))));
-            arena.spawn(Box::new(FrogWinner::new(pt(306,35))));
-            arena.spawn(Box::new(FrogWinner::new(pt(433,35))));
-            arena.spawn(Box::new(FrogWinner::new(pt(560,35))));
             arena.spawn(Box::new(Vehicle::new(position, speed, vehicle_index, vehicle_size)));
             //arena.spawn(Box::new(Vehicle::new(pt(position.x+40,position.y), speed, vehicle_index, vehicle_size)));
         }
@@ -377,12 +379,26 @@ impl BounceGame {
             let position : Pt = pt(randint(0, arena.size().x-1),pos);
             arena.spawn(Box::new(Raft::new(position,speed, pt(100, 27))));
         }
+
+        arena.spawn(Box::new(FrogWinner::new(pt(50,35))));
+        arena.spawn(Box::new(FrogWinner::new(pt(177,35))));
+        arena.spawn(Box::new(FrogWinner::new(pt(306,35))));
+        arena.spawn(Box::new(FrogWinner::new(pt(433,35))));
+        arena.spawn(Box::new(FrogWinner::new(pt(560,35))));
         arena.spawn(Box::new(Frog::new(pt(arena.size().x/2 - 15, frog_pos))));
 
         BounceGame{arena: arena, playtime: 120}
     }
     pub fn game_over(&self) -> bool { self.remaining_lives() <= 0 }
-    pub fn game_won(&self) -> bool { self.remaining_time() <= 0 }
+    pub fn game_won(&self) -> bool { 
+        let actors = self.actors();
+        for b in actors{
+            if let Some(hero) = b.as_any().downcast_ref::<Frog>() {
+                return hero.is_all_frog_safe() && self.remaining_time() >= 0;
+            }
+        }
+        return false;
+    }
     pub fn remaining_time(&self) -> i32 {
         self.playtime - self.arena.count() / 30
     }
