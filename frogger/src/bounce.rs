@@ -105,7 +105,7 @@ impl Actor for FrogWinner {
 pub struct Raft {
     pos: Pt,
     size: Pt,
-    speed: i32
+    speed: i32, 
 }
 impl Raft {
     pub fn new(pos: Pt, speed: i32, size: Pt) -> Raft {
@@ -130,6 +130,70 @@ impl Actor for Raft {
     fn as_any(&self) -> &dyn Any { self }
     fn speed(&self) -> i32 { self.speed }
 }
+
+pub struct Turtle {
+    pos: Pt,
+    size: Pt,
+    speed: i32, 
+    is_under_water: bool,
+    under_water_time: i32,
+    animation_time: i32,
+    can_go_under_water: bool
+}
+impl Turtle {
+    pub fn new(pos: Pt, speed: i32, under_water_time: i32, can_go_under_water: bool) -> Turtle {
+        Turtle{pos: pos, size: pt(30,30), speed: speed, is_under_water: false, 
+            under_water_time: under_water_time, animation_time: 30, can_go_under_water: can_go_under_water}
+    }
+}
+impl Actor for Turtle {
+    fn act(&mut self, arena: &mut ArenaStatus) {
+        if  self.under_water_time == 0 && self.can_go_under_water{
+            self.is_under_water = !self.is_under_water;
+            self.under_water_time = 120;
+        }
+        let arena_w : i32 = arena.size().x;
+        if self.pos.x + self.size.x < 0 {
+            self.pos.x = arena_w ;
+        }
+        if self.pos.x > arena_w {
+            self.pos.x = - self.size.x;
+        }
+        self.pos.x = self.pos.x + self.speed;
+
+        self.under_water_time = max(self.under_water_time - 1, 0);
+        self.animation_time = max(self.animation_time - 1, 0);
+
+        if self.animation_time == 0 {
+            self.animation_time = 30;
+        }
+    }
+    fn pos(&self) -> Pt { self.pos }
+    fn size(&self) -> Pt { self.size }
+    fn sprite(&self) -> Option<Pt> { 
+        if self.under_water_time != 0 {
+            if self.is_under_water {
+                match self.under_water_time {
+                    110..=120 => return Some(pt(190, 155)),
+                    100..=109 => return Some(pt(225, 160)),
+                    0..=10 =>return Some(pt(190, 155)),
+                    _ => return None,
+                }
+            }
+           
+        }
+        match self.animation_time {
+            21..=30 => return Some (pt(220, 130)),
+            10..=20 => return Some (pt(255, 130)),
+            _ => return Some(pt(190, 130)),
+
+        }
+    }
+    fn alive(&self) -> bool { true }
+    fn as_any(&self) -> &dyn Any { self }
+    fn speed(&self) -> i32 { self.speed }
+}
+
 
 
 
@@ -158,7 +222,7 @@ impl Frog {
     }
     fn lives(&self) -> i32 { self.lives }
     fn is_all_frog_safe(&self) -> bool {
-        return self.frog_safe == 1;
+        return self.frog_safe == 5;
     }
 }
 impl Actor for Frog {
@@ -169,6 +233,11 @@ impl Actor for Frog {
                     self.vehicle_collide = 60;
                     self.lives -= 1;
                     self.is_collision_enabled = false;
+                }
+                if let Some(turtle) = other.as_any().downcast_ref::<Turtle>() {
+                    if !turtle.is_under_water {
+                        self.dragging = other.speed();
+                    }
                 }
                 if let Some(_) = other.as_any().downcast_ref::<Raft>() {
                     self.dragging = other.speed();
@@ -367,17 +436,53 @@ impl BounceGame {
             //arena.spawn(Box::new(Vehicle::new(pt(position.x+40,position.y), speed, vehicle_index, vehicle_size)));
         }
         pos = 222;
+        let mut pos_x : i32;
         for raft_index in 0..n_rafts {
             pos-=31;
             let speed;
-            if raft_index % 2 == 1 {
-                speed = 4;
+            match raft_index {
+                0 | 4 => {
+                    pos_x = 0 + raft_index * 40;
+                    for element in 0..9{
+                        let position : Pt = pt(pos_x + element*30,pos);
+                        if element % 3 == 2 {
+                            pos_x += 90;
+                        }
+                        arena.spawn(Box::new(Turtle::new(position,-2, 120, element<3)));
+                    }
+                }
+                1 | 3 => {
+                    speed = 4;
+                    pos_x = 150 + raft_index * 40;
+                    for element in 0..3{
+                        let position : Pt = pt(pos_x + element*30,pos);
+                        arena.spawn(Box::new(Raft::new(position,speed, pt(100, 27))));
+                    }
+                    pos_x = arena.size().x;
+                    arena.spawn(Box::new(Raft::new(pt(pos_x,pos),speed, pt(100, 27))));
+                    if raft_index == 1 {
+                        arena.spawn(Box::new(Raft::new(pt(pos_x-150,pos),speed, pt(100, 27))));
+                    }
+                    else {
+                        arena.spawn(Box::new(Raft::new(pt(pos_x-180,pos),speed, pt(100, 27))));
+                    }
+                }
+                _ => {
+                    {
+                        speed = -4;
+                        pos_x = 150 + raft_index * 70;
+                        for element in 0..3{
+                            let position : Pt = pt(pos_x + element*30,pos);
+                            arena.spawn(Box::new(Raft::new(position,speed, pt(100, 27))));
+                        }
+                        pos_x = arena.size().x;
+                        arena.spawn(Box::new(Raft::new(pt(pos_x,pos),speed, pt(100, 27))));
+                        }
+                }
+
             }
-            else {
-                speed = -4;
-            }
-            let position : Pt = pt(randint(0, arena.size().x-1),pos);
-            arena.spawn(Box::new(Raft::new(position,speed, pt(100, 27))));
+            
+            // arena.spawn(Box::new(Raft::new(position,speed, pt(100, 27))));
         }
 
         arena.spawn(Box::new(FrogWinner::new(pt(50,35))));
