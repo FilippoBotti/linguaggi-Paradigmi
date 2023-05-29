@@ -21,10 +21,10 @@ impl Actor for Vehicle {
         let arena_w : i32 = arena.size().x;
 
         if self.pos.x + self.size.x < 0 {
-            self.pos.x = arena_w - self.size.x;
+            self.pos.x = arena_w;
         }
         if self.pos.x  > arena_w {
-            self.pos.x = 0;
+            self.pos.x = -self.size.x;
         }
         
         self.pos.x = self.pos.x + self.speed;
@@ -224,6 +224,7 @@ impl Frog {
     fn is_all_frog_safe(&self) -> bool {
         return self.frog_safe == 5;
     }
+    pub fn is_dead_animation(&self) -> bool { self.water_collide >0 || self.vehicle_collide>0 }
 }
 impl Actor for Frog {
     fn act(&mut self, arena: &mut ArenaStatus) {
@@ -297,7 +298,7 @@ impl Actor for Frog {
         self.pos.x += self.dragging;
 
 
-        if self.pos.y <= 220  && self.dragging == 0 && self.count < 4 && self.is_collision_enabled {
+        if self.pos.y <= 250  && self.dragging == 0 && self.count < 4 && self.is_collision_enabled {
             self.water_collide = 60;
             self.lives -=1;
             self.is_collision_enabled = false;
@@ -421,27 +422,37 @@ impl BounceGame {
 
         for vehicle_index in 0..n_vehicles {
             pos-=32;
-            let speed;
+            let mut speed;
             if vehicle_index % 2 == 0 {
                 speed = 4;
             }
             else {
                 speed = -4;
             }
-            let position : Pt = pt(randint(0, arena.size().x-1),pos);
+            if vehicle_index == 2 {
+                speed = 5;
+            }
+            let position : Pt = pt(randint(0, arena.size().x/3),pos);
             if vehicle_index == n_vehicles-1 {
                 vehicle_size = pt(65,30);
             }
+            if vehicle_index != 2 {
+                arena.spawn(Box::new(Vehicle::new(pt(randint(position.x+50, arena.size().x),position.y), speed, vehicle_index, vehicle_size)));
+            }
+            else {
+                let new_postion = randint(position.x+50, arena.size().x-120);
+                arena.spawn(Box::new(Vehicle::new(pt(new_postion,position.y), speed, vehicle_index, vehicle_size)));
+                arena.spawn(Box::new(Vehicle::new(pt(randint(new_postion + 70, arena.size().x)-30,position.y), speed, vehicle_index, vehicle_size)));
+            }
             arena.spawn(Box::new(Vehicle::new(position, speed, vehicle_index, vehicle_size)));
-            //arena.spawn(Box::new(Vehicle::new(pt(position.x+40,position.y), speed, vehicle_index, vehicle_size)));
         }
-        pos = 222;
+        pos = 252;
         let mut pos_x : i32;
         for raft_index in 0..n_rafts {
             pos-=31;
             let speed;
             match raft_index {
-                0 | 4 => {
+                0 | 3 => {
                     pos_x = 0 + raft_index * 40;
                     for element in 0..9{
                         let position : Pt = pt(pos_x + element*30,pos);
@@ -451,8 +462,8 @@ impl BounceGame {
                         arena.spawn(Box::new(Turtle::new(position,-2, 120, element<3)));
                     }
                 }
-                1 | 3 => {
-                    speed = 4;
+                1 | 4 => {
+                    speed = 2;
                     pos_x = 150 + raft_index * 40;
                     for element in 0..3{
                         let position : Pt = pt(pos_x + element*30,pos);
@@ -464,19 +475,20 @@ impl BounceGame {
                         arena.spawn(Box::new(Raft::new(pt(pos_x-150,pos),speed, pt(100, 27))));
                     }
                     else {
-                        arena.spawn(Box::new(Raft::new(pt(pos_x-180,pos),speed, pt(100, 27))));
+                        arena.spawn(Box::new(Raft::new(pt(pos_x-120,pos),speed, pt(100, 27))));
                     }
                 }
                 _ => {
                     {
-                        speed = -4;
-                        pos_x = 150 + raft_index * 70;
+                        speed = -2;
+                        pos_x = 150 - raft_index * 30;
                         for element in 0..3{
                             let position : Pt = pt(pos_x + element*30,pos);
                             arena.spawn(Box::new(Raft::new(position,speed, pt(100, 27))));
                         }
                         pos_x = arena.size().x;
                         arena.spawn(Box::new(Raft::new(pt(pos_x,pos),speed, pt(100, 27))));
+                        arena.spawn(Box::new(Raft::new(pt(pos_x-120,pos),speed, pt(100, 27))));
                         }
                 }
 
@@ -485,16 +497,16 @@ impl BounceGame {
             // arena.spawn(Box::new(Raft::new(position,speed, pt(100, 27))));
         }
 
-        arena.spawn(Box::new(FrogWinner::new(pt(50,35))));
-        arena.spawn(Box::new(FrogWinner::new(pt(177,35))));
-        arena.spawn(Box::new(FrogWinner::new(pt(306,35))));
-        arena.spawn(Box::new(FrogWinner::new(pt(433,35))));
-        arena.spawn(Box::new(FrogWinner::new(pt(560,35))));
+        arena.spawn(Box::new(FrogWinner::new(pt(50,65))));
+        arena.spawn(Box::new(FrogWinner::new(pt(177,65))));
+        arena.spawn(Box::new(FrogWinner::new(pt(306,65))));
+        arena.spawn(Box::new(FrogWinner::new(pt(433,65))));
+        arena.spawn(Box::new(FrogWinner::new(pt(560,65))));
         arena.spawn(Box::new(Frog::new(pt(arena.size().x/2 - 15, frog_pos))));
 
         BounceGame{arena: arena, playtime: 120}
     }
-    pub fn game_over(&self) -> bool { self.remaining_lives() <= 0 }
+    pub fn game_over(&self) -> bool { return self.remaining_lives() <= 0 || self.remaining_time() <=0}
     pub fn game_won(&self) -> bool { 
         let actors = self.actors();
         for b in actors{
