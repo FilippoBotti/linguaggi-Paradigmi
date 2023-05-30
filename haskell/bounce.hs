@@ -88,57 +88,63 @@ update_direction self_dir other_dir dx
     | otherwise = -dx
 
 
-moveX :: BasicActor -> BasicActor
-moveX (Ball x y dx dy)
+moveX :: String -> BasicActor  -> BasicActor
+moveX keys (Ball x y dx dy) 
     | 0 <= x + dx && x + dx < maxX = Ball (x + dx) y dx dy
     | otherwise                    = Ball (x - dx) y (-dx) dy
-moveX (Ghost x y rnd) = Ghost x' y rnd'
+moveX keys (Ghost x y rnd) = Ghost x' y rnd'
     where (d, rnd') = randint (-1,1) rnd
           x' = (x + 5 * d) `mod` maxX
-moveX (Turtle x y dead)
+moveX "d" (Turtle x y dead) 
     | 0 <= x + 5 && x + 5 < maxX = Turtle (x+5) y dead
     | otherwise                    = Turtle x y dead
+moveX "a" (Turtle x y dead) 
+    | 0 <= x - 5 && x - 5 < maxX = Turtle (x-5) y dead
+    | otherwise                    = Turtle x y dead
+moveX _ (Turtle x y dead) = Turtle x y dead
 
-moveY :: BasicActor -> BasicActor
-moveY (Ball x y dx dy)
+moveY :: String -> BasicActor  -> BasicActor
+moveY keys (Ball x y dx dy)
     | 0 <= y + dy && y + dy < maxY = Ball x (y + dy) dx dy
     | otherwise                    = Ball x (y - dy) dx (-dy)
-moveY (Ghost x y rnd) = Ghost x y' rnd'
+moveY keys (Ghost x y rnd) = Ghost x y' rnd'
     where (d, rnd') = randint (-1,1) rnd
           y' = (y + 5 * d) `mod` maxY
-moveY (Turtle x y dead)
+moveY "w" (Turtle x y dead) 
     | 0 <= y + 5 && y + 5 < maxY =Turtle x (y+5) dead
     | otherwise                    = Turtle x y dead
+moveY "s" (Turtle x y dead) 
+    | 0 <= y - 5 && y - 5 < maxY =Turtle x (y-5) dead
+    | otherwise                    = Turtle x y dead
+moveY _ (Turtle x y dead) = Turtle x y dead
 
 instance Actor BasicActor where
     rect (Ball x y _ _) = (x, y, actorW, actorH)
     rect (Ghost x y _) = (x, y, actorW, actorH)
     rect (Turtle x y _) = (x, y, actorW, actorH)
     move keys actors (Ball x y dx dy) = 
-        let actor_and_collision = zip actors $ map (checkCollision $ (moveX . moveY) (Ball x y dx dy)) actors
+        let actor_and_collision = zip actors $ map (checkCollision $ (moveX keys . moveY keys) (Ball x y dx dy)) actors
             actor_collision = get_obj_in_collision actor_and_collision
-            object_after_all_collision = foldl collide ((moveX . moveY) (Ball x y dx dy)) actor_collision
+            object_after_all_collision = foldl collide ((moveX keys . moveY keys) (Ball x y dx dy)) actor_collision
             in [object_after_all_collision]
     move keys actors (Ghost x y rnd) =         
-        let actor_and_collision = zip actors $ map (checkCollision $ (moveX . moveY) (Ghost x y rnd)) actors
+        let actor_and_collision = zip actors $ map (checkCollision $ (moveX keys . moveY keys) (Ghost x y rnd)) actors
             actor_collision = get_obj_in_collision actor_and_collision
-            object_after_all_collision = foldl collide ((moveX . moveY) (Ghost x y rnd)) actor_collision
+            object_after_all_collision = foldl collide ((moveX keys . moveY keys) (Ghost x y rnd)) actor_collision
             in [object_after_all_collision]
     move keys actors (Turtle x y dead) = 
-        let actor_and_collision = zip actors $ map (checkCollision $ (moveX . moveY) (Turtle x y dead)) actors
+        let actor_and_collision = zip actors $ map (checkCollision $ (moveX keys . moveY keys) (Turtle x y dead)) actors
             actor_collision = get_obj_in_collision actor_and_collision
-            object_after_all_collision = foldl collide ((moveX . moveY) (Turtle x y dead)) actor_collision
-            in [object_after_all_collision]
+            object_after_all_collision = foldl collide ((moveX keys . moveY keys) (Turtle x y dead)) actor_collision
+            in remove_dead_turtle object_after_all_collision
 
--- update_element :: Eq a => [a] -> a -> a -> [a]
--- update_element [] _ _ = []
--- update_element (x:xs) old new
---   | x == old = new : xs
---   | otherwise = x : update_element xs old new
+remove_dead_turtle (Turtle x y dead)
+    | dead = []
+    | otherwise = [Turtle x y dead]
 
 get_obj_in_collision :: [(BasicActor, Bool)] -> [BasicActor]
 get_obj_in_collision xs = [x | (x, flag) <- xs, flag]
 
 main = do
     rnd <- getRng32
-    operateArena (Arena [Ball 200 100 5 5, Ball 230 120 (-5) (-5), Ghost 100 100 rnd, Turtle 160 120 False])
+    operateArena (Arena [Ball 300 100 5 5, Ball 170 150 (-5) (-5), Ghost 100 100 rnd, Turtle 160 120 False])
