@@ -1,3 +1,4 @@
+// BOTTI FILIPPO MATRI. 333653
 use std::any::Any;
 use std::cmp::{min, max};
 
@@ -17,6 +18,7 @@ impl Vehicle {
     }
 }
 impl Actor for Vehicle {
+    // movimento dei veicoli che ricompaiono da lato opposto una volta scomparsi
     fn act(&mut self, arena: &mut ArenaStatus) {
         let arena_w : i32 = arena.size().x;
 
@@ -31,6 +33,7 @@ impl Actor for Vehicle {
     }
     fn pos(&self) -> Pt { self.pos }
     fn size(&self) -> Pt { self.size }
+    // sprite dei veicoli in base al tipo di veicolo e alla direzione
     fn sprite(&self) -> Option<Pt> { 
         if self.speed < 0{
             match self.vehicle_type {
@@ -58,6 +61,7 @@ impl Actor for Vehicle {
     fn speed(&self) -> i32 { self.speed }
 }
 
+// placeholder che spawna una rana nella posizione goal raggiunta dal player (quando ce ne sono 5 l'utente vince la partita)
 pub struct FrogWinner {
     pos: Pt,
     size: Pt,
@@ -77,6 +81,7 @@ impl Actor for FrogWinner {
                 self.is_animation_enabled = true;
             }
         }
+        // utilizzo dei contatori per mostrare la rana solo dopo l'animazione di vittoria 
         if self.is_animation_enabled {
             self.wait_time_to_show_sprite = max(self.wait_time_to_show_sprite - 1, 0);
         }
@@ -102,6 +107,7 @@ impl Actor for FrogWinner {
     fn speed(&self) -> i32 { 0 }
 }
 
+// tronchi
 pub struct Raft {
     pos: Pt,
     size: Pt,
@@ -125,12 +131,14 @@ impl Actor for Raft {
     }
     fn pos(&self) -> Pt { self.pos }
     fn size(&self) -> Pt { self.size }
+    // idealmente di dimensione anche inferiore rispetto alla sprite intera
     fn sprite(&self) -> Option<Pt> { Some(pt(190 + (100 - self.size.x),95)) }
     fn alive(&self) -> bool { true }
     fn as_any(&self) -> &dyn Any { self }
     fn speed(&self) -> i32 { self.speed }
 }
 
+// simili ai tronchi ma con la possibilità di andare sott'acqua
 pub struct Turtle {
     pos: Pt,
     size: Pt,
@@ -148,10 +156,13 @@ impl Turtle {
 }
 impl Actor for Turtle {
     fn act(&mut self, arena: &mut ArenaStatus) {
+        // se può andare sott'acqua allora ogni 2 minuti si alternerà tra sopra e sotto
         if  self.under_water_time == 0 && self.can_go_under_water{
             self.is_under_water = !self.is_under_water;
             self.under_water_time = 120;
         }
+
+        // movimento
         let arena_w : i32 = arena.size().x;
         if self.pos.x + self.size.x < 0 {
             self.pos.x = arena_w ;
@@ -161,6 +172,7 @@ impl Actor for Turtle {
         }
         self.pos.x = self.pos.x + self.speed;
 
+        //contatori per andare sott'acqua e per l'animazione
         self.under_water_time = max(self.under_water_time - 1, 0);
         self.animation_time = max(self.animation_time - 1, 0);
 
@@ -171,6 +183,7 @@ impl Actor for Turtle {
     fn pos(&self) -> Pt { self.pos }
     fn size(&self) -> Pt { self.size }
     fn sprite(&self) -> Option<Pt> { 
+        // animazione per andare sott'acqua
         if self.under_water_time != 0 {
             if self.is_under_water {
                 match self.under_water_time {
@@ -182,6 +195,7 @@ impl Actor for Turtle {
             }
            
         }
+        // animazione base
         match self.animation_time {
             21..=30 => return Some (pt(220, 130)),
             10..=20 => return Some (pt(255, 130)),
@@ -195,8 +209,13 @@ impl Actor for Turtle {
 }
 
 
-
-
+// Frog: si muove attraverso i tasti
+// vehicle_collide: contatore animazione collisione con veicolo
+// water_collide: contatore animazione "collisione" con acqua
+// safe_place_collide: contatore animazione collisione con frogwinner
+// count: contatore animazione movimento tramite tasti
+// is_collision_enabled: booleano che attiva/disattiva le collisioni (utile per disabilitare le collisioni durante l'animazione della morte della rana)
+// frog_safe: numero di rane arrivate a destinazione
 pub struct Frog {
     pos: Pt,
     step: Pt,
@@ -225,41 +244,51 @@ impl Frog {
         return self.frog_safe == 5;
     }
     pub fn is_dead_animation(&self) -> bool { self.water_collide >0 || self.vehicle_collide>0 }
+
+    pub fn is_win_animation(&self) -> bool { self.safe_place_collide==0 }
 }
 impl Actor for Frog {
     fn act(&mut self, arena: &mut ArenaStatus) {
+        //se collisioni abilitate
         if self.is_collision_enabled {
             for other in arena.collisions() {
+                // collisione con veicolo, perdo una vita
                 if let Some(_) = other.as_any().downcast_ref::<Vehicle>() {
                     self.vehicle_collide = 60;
                     self.lives -= 1;
                     self.is_collision_enabled = false;
                 }
+                // collisione con tartaruga, mi aggancio ad essa se è sopra l'acqua
                 if let Some(turtle) = other.as_any().downcast_ref::<Turtle>() {
                     if !turtle.is_under_water {
                         self.dragging = other.speed();
                     }
                 }
+                // collisione con tronco, mi aggancio ad esso
                 if let Some(_) = other.as_any().downcast_ref::<Raft>() {
                     self.dragging = other.speed();
                 }
+                // collisione con frogwinner, se non sono ancora arrivato in quello spot allora faccio partire l'animazione
+                // aumento di 1 il numero di rane salvate
+                // altrimenti perdo una vita
                 if let Some(frog_winnger) = other.as_any().downcast_ref::<FrogWinner>() {
                     self.is_collision_enabled = false;
                     if !frog_winnger.is_reached {
                         self.safe_place_collide = 60;
                         self.pos = other.pos();
                         self.frog_safe +=1;
+                        
                     }
                     else {
                         self.vehicle_collide = 60;
                         self.lives -= 1;
-                        //disattivo collisioni ma perde vite
                     }
                 }
 
             }
         }
         
+        // mi muovo con le freccette e mi salvo la direzione per l'animazione della sprite
         let keys = arena.current_keys();
         if self.count == 0 {
             if keys.contains(&"ArrowUp") {
@@ -286,18 +315,21 @@ impl Actor for Frog {
             }
         }
         
+        // mi muovo, animazione
         if self.count > 0 && self.is_collision_enabled{
             self.count -= 1;
             self.pos = self.pos + self.step;
             
         }
+        // decremento i contatori
         self.vehicle_collide = max(self.vehicle_collide - 1, 0);
         self.water_collide = max(self.water_collide - 1, 0);
         self.safe_place_collide = max(self.safe_place_collide - 1, 0);
 
+        //seguo il tronco/tartaruga se sono agganciato
         self.pos.x += self.dragging;
 
-
+        //se cado in acqua perdo una vita
         if self.pos.y <= 250  && self.dragging == 0 && self.count < 4 && self.is_collision_enabled {
             self.water_collide = 60;
             self.lives -=1;
@@ -315,6 +347,7 @@ impl Actor for Frog {
         self.pos.x = min(max(self.pos.x, 0), scr.x);  // clamp
         self.pos.y = min(max(self.pos.y, 0), scr.y);  // clamp
         
+        // riabilito le collisioni 
         if !self.is_collision_enabled && (self.vehicle_collide == 0 && self.water_collide == 0 && self.safe_place_collide == 0) {
             self.pos = pt(arena.size().x/2-self.size.x/2, arena.size().y-33);
             self.is_collision_enabled = true;
@@ -323,6 +356,7 @@ impl Actor for Frog {
     }
     fn pos(&self) -> Pt { self.pos }
     fn size(&self) -> Pt { self.size }
+    // gestione delle sprite a seconda dell'animazione
     fn sprite(&self) -> Option<Pt> {
         if self.vehicle_collide != 0{
             match self.vehicle_collide {
@@ -407,19 +441,13 @@ pub struct BounceGame {
     playtime: i32
 }
 impl BounceGame {
-    // fn randpt(size: Pt) -> Pt {
-    //     let mut p = pt(randint(0, size.x), randint(0, size.y));
-    //     while (p.x - size.x / 2).pow(2) + (p.y - size.y / 2).pow(2) < 10000 {
-    //         p = pt(randint(0, size.x), randint(0, size.y));
-    //     }
-    //     return p;
-    // }
     pub fn new(size: Pt, n_vehicles: i32, n_rafts: i32) -> BounceGame {
         let mut arena = Arena::new(size);
         let frog_pos = arena.size().y-33;
         let mut pos= frog_pos;
         let mut vehicle_size = pt(30,30);
 
+        // spawno i veicoli con le rispettive velocità e sprite, ne spawno più di 2/3 per riga a seconda della riga
         for vehicle_index in 0..n_vehicles {
             pos-=32;
             let mut speed;
@@ -446,6 +474,8 @@ impl BounceGame {
             }
             arena.spawn(Box::new(Vehicle::new(position, speed, vehicle_index, vehicle_size)));
         }
+
+        // spawno tronchi e tartarughe (raggruppate di 3 in 3) a seconda della riga, solo un gruppo di tartarughe per riga potrà andare sott'acqua
         pos = 252;
         let mut pos_x : i32;
         for raft_index in 0..n_rafts {
@@ -465,6 +495,7 @@ impl BounceGame {
                 1 | 4 => {
                     speed = 2;
                     pos_x = 150 + raft_index * 40;
+                    //spawno più tronchi vicini per creare uno più grande
                     for element in 0..3{
                         let position : Pt = pt(pos_x + element*30,pos);
                         arena.spawn(Box::new(Raft::new(position,speed, pt(100, 27))));
@@ -496,7 +527,7 @@ impl BounceGame {
             
             // arena.spawn(Box::new(Raft::new(position,speed, pt(100, 27))));
         }
-
+        //spawno i frogwinner placeholder e la rana
         arena.spawn(Box::new(FrogWinner::new(pt(50,65))));
         arena.spawn(Box::new(FrogWinner::new(pt(177,65))));
         arena.spawn(Box::new(FrogWinner::new(pt(306,65))));
@@ -506,12 +537,14 @@ impl BounceGame {
 
         BounceGame{arena: arena, playtime: 120}
     }
+    // gioco finito se perdo tutte le vite o finisco il tempo
     pub fn game_over(&self) -> bool { return self.remaining_lives() <= 0 || self.remaining_time() <=0}
+    // gioco vinto se ho salvato tutte le rane, ho finito l'animazione e ho ancora tempo a disposizione
     pub fn game_won(&self) -> bool { 
         let actors = self.actors();
         for b in actors{
             if let Some(hero) = b.as_any().downcast_ref::<Frog>() {
-                return hero.is_all_frog_safe() && self.remaining_time() >= 0;
+                return hero.is_all_frog_safe() && self.remaining_time() >= 0 && hero.is_win_animation();
             }
         }
         return false;

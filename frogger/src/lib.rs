@@ -1,3 +1,4 @@
+// BOTTI FILIPPO MATRI. 333653
 use bounce::Frog;
 use pt2d::pt;
 use wasm_bindgen::prelude::*;
@@ -24,6 +25,7 @@ impl BounceGui {
     }
     pub fn tick(&mut self) {
         g2d::clear_canvas();
+        // disegnamo il background e l'intestazione iniziale
         g2d::draw_image_clip("frogger-bg.png".to_string(), pt(0,30) ,pt(0,15), pt(640,450));
         g2d::draw_image_clip("bg.png".to_string(), pt(0,0) ,pt(0,0), pt(640,30));
         g2d::draw_image_clip("frogger.png".to_string(), pt(0,0) ,pt(3,255), pt(225,30));
@@ -32,6 +34,7 @@ impl BounceGui {
                 if frog.is_dead_animation(){
                     self.heart_animation -=1;
                     if self.heart_animation % 2 == 0 {
+                        // quando l'utente perde una vita l'icona lampeggia finchè vi è l'animazione della morte della rana
                         g2d::draw_image_clip("life.png".to_string(), pt(300+self.game.remaining_lives()*20,5) ,pt(0,0), pt(20,20));
                     }
                 }
@@ -43,9 +46,11 @@ impl BounceGui {
                 //g2d::fill_rect(b.pos(), b.size());
             }
         }
+        // disegnamo le vite rimanenti, anzichè usare un campo testuale
         for heart in 0..self.game.remaining_lives() {
             g2d::draw_image_clip("life.png".to_string(), pt(300+heart*20,5) ,pt(0,0), pt(20,20));
         }
+        // disegnamo il tempo rimanente come una barra sul gradiente rosso/verde che si riduce via via al passare dei secondi
         g2d::draw_image_clip("time.png".to_string(), pt(399,0) ,pt(0,0), pt(self.game.remaining_time()*2+1,30));
         // let txt = format!("Lives: {} Time: {}",
         //     self.game.remaining_lives(), self.game.remaining_time());

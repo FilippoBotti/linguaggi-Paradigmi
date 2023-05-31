@@ -1,5 +1,4 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# HLINT ignore "Use camelCase" #-}
+-- BOTTI FILIPPO MATRI. 333653
 import Control.Monad
 import Data.Word (Word32)
 import Data.Bits (xor, shiftL, shiftR)
